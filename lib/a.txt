@@ -1,0 +1,283 @@
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+
+//ESP Web Server Library to host a web page
+#include <ESP8266WebServer.h>
+// Include the I2C Liquid Crystal Display Library
+
+#define RAW_DATA_LEN 350
+uint16_t rawDataOff[RAW_DATA_LEN] = {
+    8994, 4550, 562, 1742, 530, 1746, 530, 614,
+    526, 618, 530, 614, 530, 622, 526, 1706,
+    574, 1750, 526, 1746, 526, 1746, 530, 1746,
+    530, 614, 530, 1706, 570, 1706, 574, 1706,
+    574, 618, 526, 586, 558, 614, 526, 618,
+    526, 618, 526, 618, 530, 1706, 570, 1706,
+    574, 1706, 574, 582, 558, 614, 530, 614,
+    530, 614, 530, 618, 526, 578, 570, 574,
+    574, 614, 530, 586, 558, 610, 530, 614,
+    530, 614, 530, 618, 526, 1706, 574, 1706,
+    574, 614, 530, 614, 530, 610, 530, 614,
+    530, 614, 530, 618, 526, 578, 570, 578,
+    570, 618, 526, 614, 530, 614, 530, 614,
+    530, 614, 530, 614, 530, 1706, 574, 594,
+    554, 614, 530, 614, 526, 614, 530, 614,
+    530, 618, 526, 618, 526, 578, 570, 578,
+    570, 618, 530, 582, 558, 614, 530, 614,
+    530, 614, 530, 618, 526, 578, 570, 574,
+    574, 618, 526, 614, 530, 614, 526, 618,
+    526, 618, 526, 618, 530, 622, 526, 594,
+    554, 614, 530, 582, 558, 614, 530, 614,
+    530, 614, 530, 618, 526, 578, 570, 578,
+    570, 618, 526, 1746, 530, 614, 526, 1750,
+    526, 618, 526, 618, 530, 618, 530, 574,
+    574, 614, 530, 1742, 530, 1746, 530, 1746,
+    530, 1746, 526, 1754, 526, 578, 570, 622,
+    526, 1746, 526, 1000};
+
+#define RAW_DATA_LEN 350
+uint16_t rawDataOn[RAW_DATA_LEN] = {
+    8998, 4578, 534, 1698, 574, 1698, 578, 566,
+    578, 566, 578, 566, 578, 570, 578, 1698,
+    578, 1702, 626, 1650, 626, 1646, 626, 1650,
+    578, 566, 578, 1734, 594, 1686, 542, 1734,
+    594, 518, 626, 518, 574, 570, 574, 570,
+    574, 570, 626, 518, 574, 1734, 546, 1730,
+    550, 1698, 578, 570, 574, 570, 574, 566,
+    578, 566, 578, 570, 574, 570, 578, 570,
+    578, 566, 578, 590, 550, 570, 574, 590,
+    554, 570, 574, 570, 574, 1702, 578, 1702,
+    578, 570, 574, 614, 530, 566, 574, 570,
+    574, 570, 574, 570, 578, 566, 578, 570,
+    578, 570, 578, 566, 574, 570, 574, 566,
+    578, 566, 578, 570, 574, 1702, 578, 570,
+    578, 570, 574, 590, 554, 566, 574, 570,
+    574, 570, 574, 570, 578, 570, 578, 570,
+    578, 566, 578, 566, 578, 586, 554, 570,
+    574, 570, 574, 570, 578, 570, 574, 570,
+    582, 566, 578, 566, 574, 570, 574, 570,
+    574, 566, 578, 566, 578, 1702, 578, 570,
+    578, 570, 574, 590, 554, 566, 574, 570,
+    574, 570, 574, 570, 578, 566, 578, 570,
+    578, 570, 578, 1698, 574, 590, 554, 1698,
+    578, 566, 578, 566, 578, 570, 578, 570,
+    578, 566, 578, 1698, 574, 1702, 574, 1698,
+    578, 1698, 578, 1698, 578, 1702, 578, 570,
+    578, 1698, 574, 1000};
+bool klimaOn = false;
+//---------------------------------------------------------------
+//Our HTML webpage contents in program memory
+const char MAIN_page[] PROGMEM = R"=====(
+  <!DOCTYPE html>
+  <html>
+  <body>
+  <center>
+  Click to turn <a href="ledOn">Lamp ON</a><br>
+  Click to turn <a href="ledOff">Lamp OFF</a><br>
+  Click to turn <a href="ledToggle">Lamp Toggle</a><br>
+  </center>  
+  </body>
+  </html>
+)=====";
+//---------------------------------------------------------------
+
+//Static IP address configuration
+IPAddress staticIP(192, 168, 1, 55); //ESP static ip
+IPAddress gateway(192, 168, 1, 1);   //IP Address of your WiFi Router (Gateway)
+IPAddress subnet(255, 255, 255, 0);  //Subnet mask
+IPAddress dns(192, 168, 1, 1);       //DNS
+
+//const char* deviceName = "circuits4you.com";
+
+//On board LED Connected to GPIO2
+#define LED D3
+#define LED2 D4
+#define input D5
+
+//SSID and Password of your WiFi router
+
+const char *ssid = "SUPERONLINE_WiFi_2092";
+const char *password = "mert1995ST";
+
+//Declare a global object variable from the ESP8266WebServer class.
+ESP8266WebServer server(80); //Server on port 80
+
+//===============================================================
+// This routine is executed when you open its IP in browser
+//===============================================================
+
+void handleRoot()
+{
+  if (!server.authenticate("emre", "Bywzen0lNlH7FiuMTJsE"))
+  {
+    return server.requestAuthentication();
+  }
+  Serial.println("You called root page");
+  Serial.println(digitalRead(input));
+  String s = MAIN_page;             //Read HTML contents
+  server.send(200, "text/html", s); //Send web page
+}
+
+void handleLEDon()
+{
+  if (!server.authenticate("emre", "Bywzen0lNlH7FiuMTJsE"))
+  {
+    return server.requestAuthentication();
+  }
+  Serial.println("Lamp on page");
+  if (!digitalRead(input))
+  {
+    if (digitalRead(LED))
+    {
+
+      digitalWrite(LED, LOW);   //LED is connected in reverse
+      digitalWrite(LED2, HIGH); //LED is connected in reverse
+    }
+    else
+    {
+      digitalWrite(LED, HIGH); //LED off
+      digitalWrite(LED2, LOW);
+    }
+  }
+
+  String s = MAIN_page;                                                           //Read HTML contents
+  server.send(200, "text/html", s + "<center class='state'>Lamp is ON</center>"); //Send ADC value only to client ajax request
+
+  Serial.print(digitalRead(input));
+}
+
+void handleLEDoff()
+{
+  if (!server.authenticate("emre", "Bywzen0lNlH7FiuMTJsE"))
+  {
+    return server.requestAuthentication();
+  }
+  Serial.println("Lamp off page");
+  if (digitalRead(input))
+  {
+    if (digitalRead(LED2))
+    {
+      digitalWrite(LED, HIGH); //LED off
+      digitalWrite(LED2, LOW);
+    }
+    else
+    {
+      digitalWrite(LED, LOW);   //LED is connected in reverse
+      digitalWrite(LED2, HIGH); //LED is connected in reverse
+    }
+  }
+
+  String s = MAIN_page;                                                            //Read HTML contents
+  server.send(200, "text/html", s + "<center class='state'>Lamp is OFF</center>"); //Send ADC value only to client ajax request
+
+  Serial.print(digitalRead(input));
+}
+void handleLEDtoggle()
+{
+  if (!server.authenticate("emre", "Bywzen0lNlH7FiuMTJsE"))
+  {
+    return server.requestAuthentication();
+  }
+  Serial.println("Lamp toggle page");
+
+  String s = MAIN_page; //Read HTML contents
+  if (digitalRead(LED))
+  {
+    digitalWrite(LED, LOW); //LED off
+    digitalWrite(LED2, HIGH);
+
+    /* code */
+  }
+  else
+  {
+    digitalWrite(LED, HIGH); //LED is connected in reverse
+    digitalWrite(LED2, LOW);
+  }
+  if (!digitalRead(input))
+  {
+    server.send(200, "text/html", s + "<center class='state'>Lamp is OFF</center>"); //Send ADC value only to client ajax request
+  }
+  else
+  {
+    server.send(200, "text/html", s + "<center class='state'>Lamp is ON</center>"); //Send ADC value only to client ajax request
+    /* code */
+  }
+
+  //Serial.print(digitalRead(input));
+}
+void handleKlimaOn()
+{
+  if (!server.authenticate("emre", "Bywzen0lNlH7FiuMTJsE"))
+  {
+    return server.requestAuthentication();
+  }
+  Serial.println("Klima On Page");
+  String s = MAIN_page;
+  server.send(200, "text/html", s + "<center class='state'>Klima is ON</center>");
+}
+void handleKlimaOff()
+{
+  if (!server.authenticate("emre", "Bywzen0lNlH7FiuMTJsE"))
+  {
+    return server.requestAuthentication();
+  }
+  Serial.println("Klima Off Page");
+  String s = MAIN_page;
+  server.send(200, "text/html", s + "<center class='state'>Klima is ON</center>");
+}
+//==============================================================
+//                  SETUP
+//==============================================================
+void setup(void)
+{
+  Serial.begin(9600);
+
+  WiFi.begin(ssid, password); //Connect to your WiFi router
+  Serial.println("");
+
+  //Onboard LED port Direction output
+  pinMode(LED, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  //Power on LED state off
+  digitalWrite(LED, HIGH);
+  digitalWrite(LED2, LOW),
+
+      WiFi.disconnect(); //Prevent connecting to wifi based on previous configuration
+
+  //WiFi.hostname(deviceName);      // DHCP Hostname (useful for finding device for static lease)
+  WiFi.config(staticIP, gateway, subnet, dns);
+  WiFi.begin(ssid, password);
+
+  WiFi.mode(WIFI_STA); //WiFi mode station (connect to wifi router only
+
+  // Wait for connection
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  //If connection successful show IP address in serial monitor
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP()); //IP address assigned to your ESP
+
+  server.on("/", handleRoot);       //Which routine to handle at root location. This is display page
+  server.on("/ledOn", handleLEDon); //as Per  <a href="ledOn">, Subroutine to be called
+  server.on("/ledOff", handleLEDoff);
+  server.on("/ledToggle", handleLEDtoggle);
+  server.on("/klimaOn", handleKlimaOn);
+  server.on("/klimaOff", handleKlimaOff);
+
+  server.begin(); //Start server
+  Serial.println("HTTP server started");
+}
+//==============================================================
+//                     LOOP
+//==============================================================
+void loop(void)
+{
+  server.handleClient(); //Handle client requests
+}

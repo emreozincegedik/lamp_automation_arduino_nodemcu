@@ -1,0 +1,85 @@
+/* IRremoteESP8266: IRsendDemo - demonstrates sending IR codes with IRsend.
+ *
+ * Version 1.1 January, 2019
+ * Based on Ken Shirriff's IrsendDemo Version 0.1 July, 2009,
+ * Copyright 2009 Ken Shirriff, http://arcfn.com
+ *
+ * An IR LED circuit *MUST* be connected to the ESP8266 on a pin
+ * as specified by kIrLed below.
+ *
+ * TL;DR: The IR LED needs to be driven by a transistor for a good result.
+ *
+ * Suggested circuit:
+ *     https://github.com/crankyoldgit/IRremoteESP8266/wiki#ir-sending
+ *
+ * Common mistakes & tips:
+ *   * Don't just connect the IR LED directly to the pin, it won't
+ *     have enough current to drive the IR LED effectively.
+ *   * Make sure you have the IR LED polarity correct.
+ *     See: https://learn.sparkfun.com/tutorials/polarity/diode-and-led-polarity
+ *   * Typical digital camera/phones can be used to see if the IR LED is flashed.
+ *     Replace the IR LED with a normal LED if you don't have a digital camera
+ *     when debugging.
+ *   * Avoid using the following pins unless you really know what you are doing:
+ *     * Pin 0/D3: Can interfere with the boot/program mode & support circuits.
+ *     * Pin 1/TX/TXD0: Any serial transmissions from the ESP8266 will interfere.
+ *     * Pin 3/RX/RXD0: Any serial transmissions to the ESP8266 will interfere.
+ *   * ESP-01 modules are tricky. We suggest you use a module with more GPIOs
+ *     for your first time. e.g. ESP-12 etc.
+ */
+
+#include <Arduino.h>
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+
+const uint16_t kIrLed = 4; // ESP8266 GPIO pin to use. Recommended: 4 (D2).
+
+IRsend irsend(kIrLed); // Set the GPIO to be used to sending the message.
+
+// Example of data captured by IRrecvDumpV2.ino
+// uint16_t klimaOff[211] = {9044, 4492, 612, 1690, 582, 1690, 582, 560, 582, 562, 582, 562, 580, 566, 580, 1650, 626, 1672, 604, 1688, 582, 1690, 582, 1690, 582, 562, 582, 1670, 604, 1672, 604, 1650, 628, 562, 580, 560, 582, 560, 580, 560, 582, 562, 582, 562, 580, 1696, 580, 1650, 626, 1650, 624, 560, 580, 560, 580, 560, 582, 562, 580, 562, 582, 566, 580, 542, 604, 562, 580, 560, 582, 560, 580, 562, 582, 560, 582, 562, 580, 1650, 626, 1650, 628, 562, 582, 558, 582, 560, 582, 560, 582, 562, 582, 562, 582, 540, 604, 520, 626, 562, 582, 560, 582, 560, 582, 560, 580, 562, 582,
+//                           562, 582, 1652, 624, 566, 580, 562, 582, 558, 582, 560, 580, 560, 582, 562, 582, 562, 582, 566, 580, 540, 606, 562, 582, 558, 582, 560, 580, 562, 580, 562, 582, 562, 582, 542, 604, 544, 604,
+//                           562, 582, 558, 582, 558, 582, 560, 582, 562, 580, 562, 582, 564, 582, 542, 604, 562, 582, 560, 582, 558, 582, 560, 582, 560, 582, 560, 582, 542, 604, 542, 604, 562, 582, 1690, 582, 558, 582,
+//                           1692, 580, 562, 582, 562, 580, 566, 580, 542, 604, 560, 582, 1690, 582, 1690, 582, 1690, 582, 1692, 582, 1670, 606, 566, 580, 542, 604, 1690, 582};
+
+// uint16_t klimaOn[211] = {9044, 4494, 612, 1688, 584, 1690, 582, 558, 582, 562, 582, 562, 582, 564, 580, 1672, 606, 1670, 606, 1688, 582, 1690, 582, 1692, 582, 560, 582, 1670, 604, 1670, 606, 1648, 630, 560, 582, 560, 582, 558, 584, 560, 582, 560, 582, 562, 582, 1670, 606, 1672, 606, 1670, 604, 536, 604, 558, 582, 560, 582, 560, 582, 562, 582, 540, 606, 542, 604, 562, 582, 536, 604, 560, 582, 560, 582, 560, 582, 560, 582, 1672, 606, 1670, 606, 560, 584, 534, 606, 558, 582, 560, 582, 560, 582, 562, 582, 542, 604, 540, 606, 562, 582, 560, 582, 558, 582, 560, 584, 560, 580,
+//                          562, 582, 1670, 606, 542, 604, 560, 582, 536, 604, 560, 582, 560, 582, 560, 582, 562, 582, 564, 580, 542, 606, 562, 582, 558, 582, 560, 582, 560, 582, 562, 582, 562, 582, 540, 604, 542, 604,
+//                          560, 582, 560, 582, 558, 582, 560, 582, 562, 582, 560, 582, 1670, 606, 542, 602, 562, 582, 560, 582, 560, 582, 560, 582, 560, 582, 562, 580, 566, 580, 542, 604, 560, 582, 1690, 582, 558, 582, 1692, 582, 560, 582, 560, 582, 542, 604, 566, 580, 562, 582, 1690, 582, 1690, 582, 1690, 582, 1692, 580, 1694, 580, 1650, 628, 542, 604, 1690, 582};
+uint8_t klimaOff[13] = {0xC3, 0x77, 0xE0, 0x00, 0x60, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x05, 0x9F};
+
+uint8_t klimaOn[13] = {0xC3, 0x77, 0xE0, 0x00, 0x60, 0x00, 0x20, 0x00, 0x00, 0x20, 0x00, 0x05, 0xBF};
+// Example Samsung A/C state captured from IRrecvDumpV2.ino
+uint8_t samsungState[kSamsungAcStateLength] = {
+    0x02, 0x92, 0x0F, 0x00, 0x00, 0x00, 0xF0,
+    0x01, 0xE2, 0xFE, 0x71, 0x40, 0x11, 0xF0};
+
+void setup()
+{
+  irsend.begin();
+#if ESP8266
+  Serial.begin(9600, SERIAL_8N1, SERIAL_TX_ONLY);
+#else  // ESP8266
+  Serial.begin(115200, SERIAL_8N1);
+#endif // ESP8266
+}
+bool on = false;
+void loop()
+{
+
+  if (on)
+  {
+    Serial.println("AC Switched Off");
+    irsend.sendElectraAC(klimaOff);
+    // irsend.sendRaw(klimaOff, 67, 38); // Send a raw data capture at 38kHz.
+    /* code */
+  }
+  else
+  {
+
+    Serial.println("AC Switched On");
+    irsend.sendElectraAC(klimaOn);
+    /* irsend.sendRaw(klimaOn, 67, 38); // Send a raw data capture at 38kHz. */
+  }
+  on = !on;
+  delay(2000);
+}
