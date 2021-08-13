@@ -10,3 +10,5 @@ This is a project for lamp automation
 ## Code usage
 
 Code is written in Visual Studio Code with platformio plugin, if the Arduino IDE is going to be used, the **_code is in the src_** folder
+
+as of now, lamp needs one output instead of 2 output. Efficiency...
